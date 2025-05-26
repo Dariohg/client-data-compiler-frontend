@@ -63,46 +63,80 @@ api.interceptors.response.use(
 
 // Servicios de la API
 export const clientService = {
-    // Obtener todos los clientes con filtros
-    getClients: async (filters = {}) => {
+    // Obtener todos los clientes con filtros - CORREGIDO
+    getClients: async (filters = null) => {
+        console.log('🔍 getClients llamado con filtros:', filters)
+
+        // Construir parámetros solo si hay filtros válidos
         const params = new URLSearchParams()
 
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== '') {
-                params.append(key, value)
-            }
-        })
+        // Solo agregar parámetros que tengan valores válidos
+        if (filters && typeof filters === 'object') {
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '' && value !== false) {
+                    params.append(key, String(value))
+                }
+            })
+        }
 
-        const response = await api.get(`/clients?${params}`)
-        return response.data
+        const queryString = params.toString()
+        const url = queryString ? `/clients?${queryString}` : '/clients'
+
+        console.log('🚀 URL final:', `${API_BASE_URL}${url}`)
+
+        try {
+            const response = await api.get(url)
+            console.log('✅ Respuesta exitosa:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('❌ Error en getClients:', error)
+            // Si falla con parámetros, intentar sin parámetros como fallback
+            if (queryString) {
+                console.log('🔄 Reintentando sin parámetros...')
+                try {
+                    const fallbackResponse = await api.get('/clients')
+                    console.log('✅ Fallback exitoso:', fallbackResponse.data)
+                    return fallbackResponse.data
+                } catch (fallbackError) {
+                    console.error('❌ Fallback también falló:', fallbackError)
+                    throw fallbackError
+                }
+            }
+            throw error
+        }
     },
 
     // Obtener cliente por ID
     getClientById: async (id) => {
+        console.log('🔍 getClientById llamado con ID:', id)
         const response = await api.get(`/clients/${id}`)
         return response.data
     },
 
     // Actualizar cliente
     updateClient: async (id, clientData) => {
+        console.log('✏️ updateClient llamado:', { id, clientData })
         const response = await api.put(`/clients/${id}`, clientData)
         return response.data
     },
 
     // Eliminar cliente
     deleteClient: async (id) => {
+        console.log('🗑️ deleteClient llamado con ID:', id)
         const response = await api.delete(`/clients/${id}`)
         return response.data
     },
 
     // Buscar clientes
     searchClients: async (searchTerm) => {
+        console.log('🔎 searchClients llamado con término:', searchTerm)
         const response = await api.get(`/clients/search?q=${encodeURIComponent(searchTerm)}`)
         return response.data
     },
 
     // Limpiar todos los clientes
     clearAllClients: async () => {
+        console.log('🧹 clearAllClients llamado')
         const response = await api.delete('/clients')
         return response.data
     },
@@ -111,10 +145,11 @@ export const clientService = {
 export const uploadService = {
     // Subir archivo Excel
     uploadFile: async (file, onProgress) => {
+        console.log('📤 uploadFile llamado con archivo:', file.name)
         const formData = new FormData()
         formData.append('file', file)
 
-        const response = await api.post('/upload/', formData, {
+        const response = await api.post('/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -128,11 +163,13 @@ export const uploadService = {
             },
         })
 
+        console.log('✅ Upload exitoso:', response.data)
         return response.data
     },
 
     // Descargar plantilla
     downloadTemplate: async () => {
+        console.log('📥 downloadTemplate llamado')
         const response = await api.get('/upload/template', {
             responseType: 'blob',
         })
@@ -146,10 +183,12 @@ export const uploadService = {
         link.click()
         link.remove()
         window.URL.revokeObjectURL(url)
+        console.log('✅ Plantilla descargada')
     },
 
     // Obtener archivos subidos
     getUploadedFiles: async () => {
+        console.log('📂 getUploadedFiles llamado')
         const response = await api.get('/upload/files')
         return response.data
     },
@@ -158,12 +197,14 @@ export const uploadService = {
 export const validationService = {
     // Validar todos los clientes
     validateAll: async () => {
-        const response = await api.get('/validate/')
+        console.log('✅ validateAll llamado')
+        const response = await api.get('/validate')
         return response.data
     },
 
     // Validar un cliente específico
     validateSingle: async (clientData) => {
+        console.log('✅ validateSingle llamado con:', clientData)
         const response = await api.post('/validate/single', clientData)
         return response.data
     },
@@ -172,6 +213,7 @@ export const validationService = {
 export const statsService = {
     // Obtener estadísticas
     getStats: async () => {
+        console.log('📊 getStats llamado')
         const response = await api.get('/stats')
         return response.data
     },
@@ -180,15 +222,55 @@ export const statsService = {
 export const exportService = {
     // Exportar clientes a Excel
     exportToExcel: async (filename = '') => {
+        console.log('📤 exportToExcel llamado con filename:', filename)
         const response = await api.get(`/export?filename=${encodeURIComponent(filename)}`)
         return response.data
     },
 
     // Descargar archivo exportado
     downloadFile: (filePath) => {
+        console.log('📥 downloadFile llamado con:', filePath)
         const url = `${FILES_BASE_URL}/${filePath.replace('uploads/', '')}`
         window.open(url, '_blank')
     },
+}
+
+// Test service para debugging
+export const testService = {
+    // Test de conexión básica
+    testConnection: async () => {
+        console.log('🧪 testConnection llamado')
+        const response = await fetch('http://localhost:8080/health')
+        return response.json()
+    },
+
+    // Test de API con axios
+    testApiWithAxios: async () => {
+        console.log('🧪 testApiWithAxios llamado')
+        const response = await api.get('/clients')
+        return response.data
+    },
+
+    // Test directo a la URL problemática
+    testDirectClientCall: async () => {
+        console.log('🧪 testDirectClientCall llamado')
+        try {
+            const response = await fetch('http://localhost:8080/api/clients', {
+                method: 'GET',
+                headers: {
+                    'Origin': 'http://localhost:3000',
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            const data = await response.json()
+            console.log('🧪 Test directo exitoso:', { status: response.status, data })
+            return { status: response.status, data }
+        } catch (error) {
+            console.error('🧪 Test directo falló:', error)
+            throw error
+        }
+    }
 }
 
 // Funciones auxiliares
@@ -221,5 +303,16 @@ export const formatApiResponse = (response) => {
         throw new Error(response.message || 'Error en la respuesta')
     }
 }
+
+// Función de debug para usar en la consola del navegador
+window.debugAPI = {
+    testClients: () => clientService.getClients(),
+    testClientsWithFilters: (filters) => clientService.getClients(filters),
+    testHealth: () => testService.testConnection(),
+    testDirect: () => testService.testDirectClientCall(),
+    getCurrentClients: () => clientService.getClients(null)
+}
+
+console.log('🔧 API Debug disponible en window.debugAPI')
 
 export default api

@@ -53,19 +53,32 @@ const ClientsPage = () => {
     const borderColor = useColorModeValue('gray.200', 'gray.700')
 
     // Cargar clientes
-    const loadClients = async (filters = {}) => {
+    const loadClients = async (filters = null) => {
         try {
             setLoading(true)
+            console.log('🔄 Cargando clientes con filtros:', filters)
 
             // Aplicar filtro desde URL si existe
             const urlFilter = searchParams.get('filter')
+            let finalFilters = {}
+
             if (urlFilter === 'invalid') {
-                filters.has_errors = true
+                finalFilters.has_errors = true
+            } else if (filters) {
+                finalFilters = { ...filters }
             }
 
-            const response = await clientService.getClients(filters)
+            console.log('🎯 Filtros finales:', finalFilters)
+
+            // Si no hay filtros, pasar null en lugar de objeto vacío
+            const filtersToSend = Object.keys(finalFilters).length > 0 ? finalFilters : null
+
+            const response = await clientService.getClients(filtersToSend)
+            console.log('✅ Clientes cargados:', response)
+
             setClients(response.data?.clients || [])
         } catch (error) {
+            console.error('❌ Error cargando clientes:', error)
             const message = utils.handleApiError(error)
             toast(utils.createToast('error', 'Error', message))
             setClients([])
